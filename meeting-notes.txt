@@ -1,0 +1,25 @@
+The code was in bundled format. I don't needed so i used code in simple style.
+
+1. But it does not work as expected (when I change scene it still shows hotspots) BUG. Show file index-not-working.html
+
+
+
+File index.v1.html is modified in implementation but no change to library.
+I want to use dropdown to change scenes because it confuses with button. As i want to try with 3-4 scenes as example.
+This is cause some errors.
+
+When user presses save-camera-rotation, it adds it to array scenes rotation
+
+1. event switch-scene goes to center as my understanding says.
+
+in Line 80 registry.js you calling
+
+     this.el.emit("scene-latest", {
+        hotspots: this.geoData,
+        camRot: camRot,
+        parentRot: parentRot
+      });
+	  
+where is event listener scene-latest
+
+i want to update my scene with latest rotation saved in scene array.

@@ -1,0 +1,219 @@
+<head>
+    <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
+	<script src="./aframe-mouse-spawner-component.js"></script>
+	<script src="./aframe-mouse-dragndrop-component.js"></script>
+	<script src="./registry.js"></script>
+</head>
+<body>
+  <div>
+    <a-scene spawner="template: basicMixin1; enabled: true" embedded="" style="height: 80vh">
+      <a-assets>
+        <img id="bg" src="./1.jpg">
+		<img id="bg1" src="./2.jpg">
+        <img id="bg2" src="./3.jpg">
+		<img id="bg3" src="./4.jpg">		
+        <!-- have to prepare basic/focus texture -->
+        <img id="basic-marker" src="./basic.224ebd21.png">
+        <img id="info-marker" src="./info.09982731.png">
+
+        <!-- you can have differnt types of hotspot -->
+        <!-- note that only mixin that have viz-cursor attached to it will always look at the camera. -->
+        <a-mixin id="basicMixin1" geometry="primitive: plane; height: 1; width: 1" material="transparent: 1; side: double; src: #basic-marker" registry="basicMixin: basicMixin1; focusMixin: focusMixin1" dragndrop="" viz-cursor=""></a-mixin>
+
+
+        <a-mixin id="focusMixin1" geometry="primitive: plane; height: 1; width: 1" material="transparent: 1; side: double; src: #info-marker" registry="basicMixin: basicMixin1; focusMixin: focusMixin1" dragndrop=""></a-mixin>
+
+        <!-- just remember to suppy basic/focus -->
+        <a-mixin id="basicMixin2" geometry="primitive: sphere; radius: 0.25" material="color: yellow" registry="basicMixin: basicMixin2; focusMixin: focusMixin2" dragndrop=""></a-mixin>
+
+        <a-mixin id="focusMixin2" geometry="primitive: sphere; radius: 0.25" material="color: red" registry="basicMixin: basicMixin2; focusMixin: focusMixin2" dragndrop=""></a-mixin>
+      </a-assets>
+      <a-sky id="sky" src="#bg"></a-sky>
+
+      <!-- you have yo wrap your camera entity in a camera rig now -->
+      <a-entity>
+        <a-entity id="mycamera" ref="camera" camera="" look-controls="" wasd-controls="" position="0 1.6 0"></a-entity>
+      </a-entity>
+
+    </a-scene>
+    <div id="control">
+      <button type="button" id="btn-toggle">enabled</button>
+      <button type="button" id="btn-update">update focused</button>
+      <button type="button" id="btn-switch">switch style</button>
+      <button type="button" id="btn-scene">switch scene</button>
+	  <input type="button" id="save-camera-rotation" value="save-camera-rotation">
+	  <!----- want to see example with dropdown ---->
+	  
+	  <select id="scenesList"></select>
+	  
+	  <!----- want to see example with dropdown ---->
+
+      <div id="focused-data">
+        focused data...
+      </div>
+    </div>
+
+    <script>
+/*
+changes by Atul here  only on front-end not registry
+*/
+var scenes = [{	 "src":"bg",
+				 "rot":{}
+				 },
+				 {"src":"bg1",
+				 "rot":{}
+				 },
+				 {"src":"bg2",
+				 "rot":{}
+				 },
+				 {"src":"bg3",
+				 "rot":{}
+				 }];
+	
+var sel = document.getElementById('scenesList');
+
+for(var i = 0; i < scenes.length; i++) 
+{
+    var opt = document.createElement('option');
+    opt.innerHTML = i;
+    opt.value = scenes[i].src;
+    sel.appendChild(opt);
+}
+	
+/*implemented change scene check line 167 for comparison*/
+
+document.getElementById('scenesList').onchange = function (e) {
+ 
+  let scene = document.querySelector("a-scene");
+  let sky = document.querySelector("#sky");
+  
+  let scenesList = document.getElementById("scenesList");
+  let sky_src = scenesList.options[scenesList.selectedIndex].value;
+
+  scene.emit("export-hotspots");
+  scene.emit("switch-scene");
+  sky.setAttribute("src", "#".concat(sky_src));
+  scene.emit("import-hotspots");
+};	
+
+// it saves camera rotation into data structure;
+
+document.getElementById("save-camera-rotation").onclick = function(){
+      let myCamera  = document.querySelector("#mycamera");
+	  
+	  let scenesList = document.getElementById("scenesList");
+	  //console.log("---myCamera---",myCamera.getAttribute("rotation"));
+	  scenes[scenesList.selectedIndex].rot = {... myCamera.getAttribute("rotation")};
+	  console.log("------updated scenes datastructure ------",scenes);
+	  
+};
+
+/* rest of code is same from Lei */
+	
+var scene = document.querySelector("a-scene");
+var sky = document.querySelector("#sky"); // fake import data
+val=1; 
+var dummy = {
+    position: {
+      x: val - 5,
+      y: val + 1,
+      z: val - 5
+    },
+    rotation: {
+      x: 10 * (val - 5),
+      y: 10 * (val + 1),
+      z: 10 * (val - 5)
+    }
+  };
+
+document.addEventListener("keypress", function (e) {
+  if (e.key == "i") {
+    // import list of coordinates into the scene,
+    // coordinate stucture: {x: val, y: val, z: val}
+    scene.emit("import-hotspots", dummy);
+  } else if (e.key == "o") {
+    // tell the scene to dump all hotspots
+    scene.emit("export-hotspots");
+  }
+}); // triggered whlen export complete, return a list of coordinates
+
+scene.addEventListener("hotspots-exported", function (e) {
+  console.log(e.detail);
+}); // export the focused spot
+
+scene.addEventListener("focused-exported", function (e) {
+  var block = document.getElementById("focused-data");
+  block.innerHTML = JSON.stringify(e.detail);
+}); // enable-disable the hotspot spawner
+
+var btnToggle = document.getElementById("btn-toggle");
+
+btnToggle.onclick = function (e) {
+  if (btnToggle.innerHTML == "enabled") {
+    scene.setAttribute("spawner", {
+      enabled: false
+    });
+    btnToggle.innerHTML = "disabled";
+  } else {
+    scene.setAttribute("spawner", {
+      enabled: true
+    });
+    btnToggle.innerHTML = "enabled";
+  }
+}; // update the value of current focused
+
+
+var btnUpdate = document.getElementById("btn-update");
+
+btnUpdate.onclick = function (e) {
+  var dummy = {
+    type: 'position',
+    data: {
+      x: 1,
+      y: 2,
+      z: 3
+    }
+  };
+  scene.emit("edit-focused", dummy);
+};
+
+var themeId = 0;
+var btnSwitch = document.getElementById("btn-switch"); // you can switch template style by setAttribute to your desired mixin template
+
+btnSwitch.onclick = function (e) {
+  if (themeId == 0) {
+    themeId = 1;
+    scene.setAttribute("spawner", {
+      template: "basicMixin2"
+    });
+  } else {
+    themeId = 0;
+    scene.setAttribute("spawner", {
+      template: "basicMixin1"
+    });
+  }
+};
+
+var btnScene = document.getElementById("btn-scene");
+var bg = "bg";
+
+btnScene.onclick = function (e) {
+  if (bg == "bg") {
+    bg = "bg2";
+  } else {
+    bg = "bg";
+  } // these four combined will help you switch scene
+
+
+  scene.emit("export-hotspots");
+  scene.emit("switch-scene");
+  sky.setAttribute("src", "#".concat(bg));
+  scene.emit("import-hotspots");
+}; // retrieve data after switching scene.
+
+
+scene.addEventListener("scene-latest", function (e) {
+  console.log(e.detail);
+});
+</script>
+</div></body>
